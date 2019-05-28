@@ -111,3 +111,120 @@
 - You can use `app.locals` for application-level variables
 - `res.locals` for request-level local variables that are typically set by middleware component prior to the final route-handling method where views are rendered
 - The primary function of Express routes is to pair a URL pattern with response logic. But routes also can pair a URL pattern with middleware. 
+- A common web application design pattern is Post/Redirect/Get(RPG) pattern.
+- In this pattern, a user requests a form, the form data is submitted as an HTTP POST request, and then the user is redirected to another web page
+- Where the user is redirected to depends on whether the form data was considered to be valid
+- To accommodate the ability to queue messages to the user in a session variable
+
+### Chapter 6 Command-line application
+
+##### Understanding the convention
+
+- -h and --help for printing help
+- -f for filename
+- -q for quiet output 
+- -v for showing program version 
+- All options should be preceded by the - delimiter character
+
+##### Using Command-Line arguments:
+
+- command-line arguments can be accessed by using the  `process.argv` array
+-  '-' or '--' are special conventions for passing options to applications. -- denotes a full string for an option name, and - denotes a single chracter for an option name 
+-  -y or --yes to use default values for any missing options.
+-  module for parsing arguments called `yargs`
+    ~~~~
+        const argv = require('yargs').argv;
+
+
+- the yargs module includes methods for validating the argumetns.
+
+    ~~~~
+     const readFile = require('fs').readFile;
+     const yargs = require('yargs');
+     const argv = yargs
+        .demand('f)
+        .nargs('f', 1)
+        .describe('f', 'JSON file to parse')
+        .argv;
+    const file = argv.f;
+    readFile(file, (err, dataBuffer) => {
+        const value = JSON.parse(dataBuffer.toString());
+    })
+
+
+- To provide usage text for yargs:
+
+   ~~~~
+    yargs
+    // ...
+    .usage('parse-json [options]')
+    .help('h')
+    .alias('h', 'help')
+
+- Passing stdin as a file 
+
+   ~~~~
+   #!/usr/bin/env node
+  const concat = require('mississippi').concat;
+  const readFile = require('fs').readFile;
+  const yargs = require('yargs');
+  const argv = yargs
+    .usage('parse-json [options]')
+    .help('h')
+    .alias('h', 'help')
+    .demand('f') // require -f to run
+    .nargs('f', 1) // tell yargs -f needs 1 argument after it
+    .describe('f', 'JSON file to parse')
+    .argv;
+  const file = argv.f;
+  function parse(str) {
+    const value = JSON.parse(str);
+    console.log(JSON.stringify(value));
+  }
+
+  if (file === '-') {
+    process.stdin.pipe(concat(parse));
+  } else {
+    readFile(file, (err, dataBuffer) => {
+      if (err) {
+        throw err;
+      } else {
+        parse(dataBuffer.toString());
+      }
+    });
+  }
+
+##### Sharing command-line tools with NPM
+
+- The eaisest way is to use the bin field in package.json 
+- This field makes npm install an executable available to any scripts in the current project.
+- The bin field also tells npm to install the executable globally if you use npm install --global
+  ~~~~
+      "name": "parse-json",
+    "bin": {
+      "parse-json": "index.js"
+    },
+
+- Connecting scripts with Pipes:  
+  The main way to connect command-line applications is called piping.
+- `history | grep node` 
+- Type Ctrl-R to recursively search through the command histroy
+- Ctrl-S does forward search, and Ctrl-G aborts the search. Ctrl-W deletes words, ALT-F/B moves forward or backward one word, and Ctrl-A/E moves to the start or end of the line
+- A program can monitor a pipe without interrupting it by waiting for stdin to close and then piping the result to stout  
+    ~~~~
+      process.stdin.pipe(process.stdout);
+      const start = Date.now();
+      process.on('exit', () => {
+        const timeTaken = Date.now() - start;
+        console.error(`Time (s): ${timeTaken / 1000}`);
+      });
+
+- using && executes the next command if the previous exit code is zero, and || executes the next command if the exit code is a nonzero number
+   ~~~~
+    process.stdin.pipe(process.stdout);
+    process.on('exit', () => {
+      const args = process.argv.slice(2);
+      console.error(args.join(' '));
+    });
+
+    parse-json -f test.json && node exit-message.js "parse suceuss"
